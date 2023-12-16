@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    /* 스타일 시트 내용: 캔버스에 테두리를 1픽셀 두께의 검은색 선으로 지정 */
+    canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <!-- 캔버스 엘리먼트 선언 -->
+  <canvas id="myCanvas" width="400" height="400"></canvas>
+  
+  <!-- 인스펙터 관련 입력 폼과 버튼 엘리먼트들을 포함하는 디브 엘리먼트 선언 -->
+  <div id="inspector">
+    <label for="scaleX">Scale X:</label>
+    <!-- 스케일 X 입력 type=number 숫자만 입력가능, 단위 0.01씩, 초기값 = 1-->
+    <input type="number" id="scaleX" step="0.01" value="1"><br>
+    
+    <label for="scaleY">Scale Y:</label>
+    <!-- 스케일 Y 입력 0.01씩, 초기값 = 1 -->
+    <input type="number" id="scaleY" step="0.01" value="1"><br>
+    
+    <label for="scaleZ">Scale Z:</label>
+    <!-- 스케일 Z 입력 0.01씩, 초기값 = 1 -->
+    <input type="number" id="scaleZ" step="0.01" value="1"><br>
+    
+    <label for="xPos">Position X:</label>
+    <!-- X 위치 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="xPos" step="1" value="0"><br>
+    
+    <label for="yPos">Position Y:</label>
+    <!-- Y 위치 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="yPos" step="1" value="0"><br>
+    
+    <label for="zPos">Position Z:</label>
+    <!-- Z 위치 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="zPos" step="1" value="0"><br>
+    
+    <label for="xRotation">X Rotation (degrees):</label>
+    <!-- X 회전 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="xRotation" step="1" value="0"><br>
+    
+    <label for="yRotation">Y Rotation (degrees):</label>
+    <!-- Y 회전 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="yRotation" step="1" value="0"><br>
+    
+    <label for="zRotation">Z Rotation (degrees):</label>
+    <!-- Z 회전 입력 단위 1씩, 초기값 = 0 -->
+    <input type="number" id="zRotation" step="1" value="0"><br>
+    
+    <!-- "하트 그리기" 버튼 만들기 -->
+    <button id="drawHeartButton">하트 그리기</button>
+    
+    <!-- "실행 취소" 버튼 만들기 -->
+    <button id="undoButton">실행 취소</button>
+  </div>
+
+  <script>
+    // 캔버스와 그리기 컨텍스트 선언
+    var canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // 입력 요소들을 변수에 할당
+    // id가 scaleX인 엘리먼트를 찾아 변수 scaleXInput에 할당
+    var scaleXInput = document.getElementById("scaleX");
+    // id가 scaleY인 엘리먼트를 찾아 변수 scaleYInput에 할당
+    var scaleYInput = document.getElementById("scaleY");
+    // id가 scaleZ인 엘리먼트를 찾아 변수 scaleZInput에 할당
+    var scaleZInput = document.getElementById("scaleZ");
+    // id가 xPos인 엘리먼트를 찾아 변수 xPosInput에 할당
+    var xPosInput = document.getElementById("xPos");
+    // id가 yPos인 엘리먼트를 찾아 변수 yPosInput에 할당
+    var yPosInput = document.getElementById("yPos");
+    // id가 zPos인 엘리먼트를 찾아 변수 zPosInput에 할당
+    var zPosInput = document.getElementById("zPos");
+    // id가 xRotation인 엘리먼트를 찾아 변수 xRotationInput에 할당
+    var xRotationInput = document.getElementById("xRotation");
+    // id가 yRotation인 엘리먼트를 찾아 변수 yRotationInput에 할당
+    var yRotationInput = document.getElementById("yRotation");
+    // id가 zRotation인 엘리먼트를 찾아 변수 zRotationInput에 할당
+    var zRotationInput = document.getElementById("zRotation");
+    // id가 drawHeartButton인 엘리먼트를 찾아 변수 drawHeartButton에 할당
+    var drawHeartButton = document.getElementById("drawHeartButton");
+    // id가 undoButton인 엘리먼트를 찾아 변수 undoButton에 할당
+    var undoButton = document.getElementById("undoButton");
+
+    // 상태 스택과 현재 상태 초기화
+    var stateStack = [];
+    var currentState = getInitialState();
+
+    // 초기 상태를 상태 스택에 추가
+    saveState();
+
+    // 입력 값이 변경될 때마다 업데이트되는 함수들 등록
+    scaleXInput.addEventListener("input", updateInspector);
+    scaleYInput.addEventListener("input", updateInspector);
+    scaleZInput.addEventListener("input", updateInspector);
+    xPosInput.addEventListener("input", updateInspector);
+    yPosInput.addEventListener("input", updateInspector);
+    zPosInput.addEventListener("input", updateInspector);
+    xRotationInput.addEventListener("input", updateInspector);
+    yRotationInput.addEventListener("input", updateInspector);
+    zRotationInput.addEventListener("input", updateInspector);
+
+    // "하트 그리기" 버튼에 클릭 이벤트 리스너 등록
+    drawHeartButton.addEventListener("click", drawHeart);
+
+    // "실행 취소" 버튼에 클릭 이벤트 리스너 등록
+    undoButton.addEventListener("click", undoState);
+
+    // 초기 상태를 반환하는 함수
+    function getInitialState() {
+      return {
+        scaleX: 1,
+        scaleY: 1,
+        scaleZ: 1,
+        xPos: 0,
+        yPos: 0,
+        zPos: 0,
+        xRotation: 0,
+        yRotation: 0,
+        zRotation: 0
+      };
+    }
+
+    // 현재 상태를 상태 스택에 저장하는 함수
+    function saveState() {
+      stateStack.push({ ...currentState });
+    }
+
+    // 인스펙터 엘리먼트를 업데이트하는 함수
+    function updateInspector() {
+      currentState.scaleX = parseFloat(scaleXInput.value);
+      currentState.scaleY = parseFloat(scaleYInput.value);
+      currentState.scaleZ = parseFloat(scaleZInput.value);
+      currentState.xPos = parseFloat(xPosInput.value);
+      currentState.yPos = parseFloat(yPosInput.value);
+      currentState.zPos = parseFloat(zPosInput.value);
+      currentState.xRotation = parseFloat(xRotationInput.value);
+      currentState.yRotation = parseFloat(yRotationInput.value);
+      currentState.zRotation = parseFloat(zRotationInput.value);
+
+      // 하트 다시 그리기
+      drawHeart();
+      
+      // 현재 상태 저장
+      saveState();
+    }
+
+    // 행렬 곱셈을 수행하는 함수
+    function hwMatrixMultiply(a, b) {
+      var result = []; // 결과 행렬을 담을 빈 배열을 선언합니다.
+      for (var i = 0; i < a.length; i++) {// 첫 번째 행렬 a의 행을 순회합니다.
+        result[i] = [];// 결과 행렬의 각 행에 빈 배열을 할당합니다.
+        for (var j = 0; j < b[0].length; j++) {// 두 번째 행렬 b의 열을 순회합니다.
+          result[i][j] = 0;// 결과 행렬의 현재 위치를 0으로 초기화합니다.
+          for (var k = 0; k < a[0].length; k++) {// 두 행렬의 곱셈을 수행하기 위해 공통 차원을 순회합니다.
+            result[i][j] += a[i][k] * b[k][j];// 결과 행렬의 현재 위치에 곱셈 결과를 더합니다.
+          }
+        }
+      }
+      return result;// 최종적으로 계산된 결과 행렬을 반환합니다.
+    }
+
+    // 이동 행렬을 반환하는 함수
+    function hwTranslateMatrix(x, y, z) {
+      return [
+        [1, 0, 0, x], //x축
+        [0, 1, 0, y], //y축
+        [0, 0, 1, z], //z축
+        [0, 0, 0, 1]  //이동변환
+      ];
+    }
+
+    // 스케일 행렬을 반환하는 함수
+    function hwScaleMatrix(sx, sy, sz) {
+      return [
+        [sx, 0, 0, 0], //x측
+        [0, sy, 0, 0], //y축
+        [0, 0, sz, 0], //z축
+        [0, 0, 0, 1]   //스케일 변환
+      ];
+    }
+
+    // X 축 회전 행렬을 반환하는 함수
+    function hwRotationMatrixX(angle) {
+      var radian = (angle * Math.PI) / 180;
+      var cos = Math.cos(radian);
+      var sin = Math.sin(radian);
+      return [
+        [1, 0, 0, 0],
+        [0, cos, -sin, 0],
+        [0, sin, cos, 0],
+        [0, 0, 0, 1]
+      ];
+    }
+
+    // Y 축 회전 행렬을 반환하는 함수
+    function hwRotationMatrixY(angle) {
+      var radian = (angle * Math.PI) / 180;
+      var cos = Math.cos(radian);
+      var sin = Math.sin(radian);
+      return [
+        [cos, 0, sin, 0],
+        [0, 1, 0, 0],
+        [-sin, 0, cos, 0],
+        [0, 0, 0, 1]
+      ];
+    }
+
+    // Z 축 회전 행렬을 반환하는 함수
+    function hwRotationMatrixZ(angle) {
+      var radian = (angle * Math.PI) / 180; // 주어진 각도를 라디안으로 변환합니다. JavaScript의 Math.cos 및 Math.sin 함수는 라디안 단위로 각도를 받아들입니다.
+      var cos = Math.cos(radian); // 코사인 함수를 사용하여 라디안 각도에 대한 코사인 값을 계산합니다.
+      var sin = Math.sin(radian); // 사인 함수를 사용하여 라디안 각도에 대한 사인 값을 계산합니다.
+      return [
+        [cos, -sin, 0, 0],
+        [sin, cos, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ];
+    }
+
+    // 하트를 그리는 함수
+    function drawHeart() {
+      // 캔버스를 클리어
+      ctx.clearRect(0, 0, canvas.width, canvas.height); //캔버스의 전체 영역을 클리어하는 명령으로, 캔버스를 초기화하여 새로운 그림을 그릴 준비를 합니다.
+      ctx.strokeStyle = "red"; // 선 색상을 빨간색으로 지정
+      ctx.lineWidth = 2; // 선 두께를 2로 지정
+
+      // 현재 입력된 값들을 변수에 저장
+      var scaleX = currentState.scaleX;
+      var scaleY = currentState.scaleY;
+      var scaleZ = currentState.scaleZ;
+      var xPos = canvas.width / 2 + currentState.xPos;
+      var yPos = canvas.height / 2 + currentState.yPos;
+      var zPos = currentState.zPos;
+      var xRotation = currentState.xRotation;
+      var yRotation = currentState.yRotation;
+      var zRotation = currentState.zRotation;
+
+      var t = 0;
+      ctx.beginPath();
+
+      // 하트 곡선을 그리기
+      while (t <= 2 * Math.PI) {
+        // 매개변수 방정식을 사용하여 각 지점의 x, y 좌표 계산
+        var x = 16 * Math.pow(Math.sin(t), 3); // 주어진 매개변수 t에 대한 x 좌표를 계산합니다. Math.sin(t)는 t에 대한 사인 값을 반환하고, Math.pow(..., 3)는 그 값을 세제곱으로 만듭니다. 따라서 이 부분은 하트 곡선의 x 좌표를 계산하는데 사용됩니다.
+        var y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)); // 어진 매개변수 t에 대한 y 좌표를 계산합니다. 이 부분은 여러 개의 코사인 함수를 조합하여 하트 모양의 y 좌표를 계산하는데 사용됩니다.
+
+        // 스케일 행렬 적용
+        var scaleMatrix = hwScaleMatrix(scaleX, scaleY, scaleZ); // hwScaleMatrix 함수를 사용하여 주어진 스케일 팩터에 따른 스케일 행렬을 생성합니다. scaleX, scaleY, scaleZ는 각각 X, Y, Z 축 방향으로의 확대 또는 축소 비율을 나타냅니다.
+        var scaledPoint = hwMatrixMultiply(scaleMatrix, [[x], [y], [0], [1]]); // hwMatrixMultiply 함수를 사용하여 스케일 행렬과 주어진 좌표를 곱하여 변환된 좌표를 계산합니다. [[x], [y], [0], [1]]는 입력 좌표 [x, y, 0, 1]를 4x1 행렬로 표현한 것입니다. 곱셈 결과로 나오는 행렬은 변환된 좌표 [x', y', z', w']를 나타냅니다.
+
+        // X, Y, Z 회전 행렬 적용
+        var rotationMatrixX = hwRotationMatrixX(xRotation);
+        var rotationMatrixY = hwRotationMatrixY(yRotation);
+        var rotationMatrixZ = hwRotationMatrixZ(zRotation);
+
+        var rotatedPoint = hwMatrixMultiply(rotationMatrixZ, scaledPoint);
+        rotatedPoint = hwMatrixMultiply(rotationMatrixY, rotatedPoint);
+        rotatedPoint = hwMatrixMultiply(rotationMatrixX, rotatedPoint);
+
+        // 이동 행렬 적용
+        var translatedPoint = hwMatrixMultiply(hwTranslateMatrix(xPos, yPos, zPos), rotatedPoint);
+
+        // 캔버스에 점 찍기
+        ctx.lineTo(translatedPoint[0][0], translatedPoint[1][0]);
+
+        t += 0.01; // 매번 0.01씩 증가시켜 곡선을 형성
+      }
+
+      ctx.stroke(); // 선 그리기
+    }
+
+    // 실행 취소 함수
+    function undoState() {
+      if (stateStack.length > 1) {
+        stateStack.pop(); // 스택에서 상태 제거
+        currentState = { ...stateStack[stateStack.length - 1] }; // 현재 상태 업데이트
+        scaleXInput.value = currentState.scaleX;
+        scaleYInput.value = currentState.scaleY;
+        scaleZInput.value = currentState.scaleZ;
+        xPosInput.value = currentState.xPos;
+        yPosInput.value = currentState.yPos;
+        zPosInput.value = currentState.zPos;
+        xRotationInput.value = currentState.xRotation;
+        yRotationInput.value = currentState.yRotation;
+        zRotationInput.value = currentState.zRotation;
+
+        drawHeart(); // 하트 다시 그리기
+      }
+    }
+  </script>
+</body>
+</html>
