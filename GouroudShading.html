@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+		<script type="module">
+			// Three.js 라이브러리를 가져옵니다.
+			import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+			//Three.js 장면(Scene)을 생성합니다. 장면은 모든 3D 개체와 라이트를 담는 컨테이너 역할을 합니다.
+			const scene = new THREE.Scene();
+			//Three.js 퍼스펙티브 카메라를 생성합니다. 
+			//이 카메라는 원근 효과를 제공하며, 시야각(75), 종횡비(window.innerWidth / window.innerHeight), 클리핑 범위(0.1에서 1000)를 설정합니다.
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+			//Three.js WebGL 렌더러를 생성합니다.
+			const renderer = new THREE.WebGLRenderer();
+			//렌더러의 크기를 현재 창의 크기로 설정합니다.
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			//렌더러의 DOM 요소를 HTML 문서의 body에 추가합니다.
+			document.body.appendChild( renderer.domElement );
+
+            //렌더러의 배경색을 노란색으로 설정합니다.
+            renderer.setClearColor(new THREE.Color(1, 1, 0));
+			
+			//const geometry = new THREE.CylinderGeometry( 1, 1, 1, 6 );
+			//Three.js 구(geometry)를 생성합니다. 
+			//여기서는 반지름이 1이고 가로 및 세로 분할을 각각 8로 설정한 구를 생성합니다. 
+			const geometry = new THREE.SphereGeometry(1, 8, 8);
+			//const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			//HTML 문서에서 버텍스 셰이더, 프래그먼트 셰이더의 소스 코드를 가져옵니다.
+      var vShader = document.getElementById( 'vertexShader' ).innerHTML;
+      var fShader = document.getElementById( 'fragmentShader' ).innerHTML;
+	  //버텍스 셰이더와 프래그먼트 셰이더를 사용하여 쉐이더 재질(material)을 생성합니다.
+      var material = new THREE.ShaderMaterial({
+          vertexShader : vShader,
+          fragmentShader : fShader
+      });
+	      //쉐이더 재질과 구(geometry)을 사용하여 Three.js 메쉬(객체)를 생성합니다.
+			const cube = new THREE.Mesh( geometry, material );
+			// 장면에 메쉬(객체)를 추가합니다.
+			scene.add( cube );
+
+			//카메라의 초기 위치를 z축 방향으로 5의 위치로 설정합니다.
+			camera.position.z = 5;
+
+			//애니메이션 함수를 정의합니다. 이 함수는 requestAnimationFrame을 사용하여 재귀적으로 호출되며, 
+			//각 호출마다 구를 회전시키고 장면을 렌더하여 화면을 갱신합니다.
+			function animate() {
+				requestAnimationFrame( animate );
+
+				cube.rotation.x += 0.01;
+				cube.rotation.y += 0.01;
+
+				renderer.render( scene, camera );
+			}
+
+			animate(); // 초기에 한 번 애니메이션 함수를 호출하여 애니메이션 루프를 시작합니다. 
+			           // 이후 애니메이션 함수는 자체를 재귀적으로 호출하여 계속해서 화면을 갱신하고 구를 회전시킵니다.
+		</script>
+
+
+<script id="vertexShader" type="x-shader/x-vertex">
+    varying vec3 vNormal; //정점 셰이더에서 프래그먼트 셰이더로 보내질 법선 벡터를 저장하는 변수입니다.
+
+	//메인 함수로, 각 정점에 대한 변환과 법선 벡터 계산을 수행합니다.
+    void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+		//정점의 최종 위치를 계산합니다. position은 정점의 현재 위치를 나타냅니다.
+        vNormal = normalize(normalMatrix * normal);
+		//법선 벡터를 계산하고 정규화하여 vNormal에 저장합니다. normalMatrix는 모델 뷰 행렬의 역행렬의 전치 행렬이며, normal은 현재 정점의 법선 벡터입니다.
+    }
+</script>
+
+<script id="fragmentShader" type="x-shader/x-fragment">
+    varying vec3 vNormal; //버텍스 셰이더에서 전달된 법선 벡터입니다.
+
+	// 메인 함수로, 각 프래그먼트의 색상을 계산합니다.
+    void main() {                
+        vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+		//정규화된 광원 방향 벡터를 정의합니다. 여기서는 (1, 1, 1) 방향으로 빛이 오는 것을 가정합니다.
+        float diff = max(dot(vNormal, lightDir), 0.0);
+		//빛의 방향과 법선 벡터 사이의 내적을 계산하고, 이를 0 이상으로 클램핑합니다. 이 값은 빛의 강도를 나타냅니다.
+
+		
+        vec3 diffuse = diff * vec3(1.0, 1.0, 1.0);
+		// 빛의 강도에 백색(diffuse)으로 설정된 재질의 색상을 곱하여 디퓨즈(확산) 조명 효과를 생성합니다.
+        gl_FragColor = vec4(diffuse, 1.0);
+		//최종적으로 계산된 디퓨즈 색상을 프래그먼트의 최종 색상으로 설정합니다.
+    }
+</script>
+	</body>
+</html>
