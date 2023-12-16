@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phong Shading Heart</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    renderer.setClearColor(new THREE.Color(1, 1, 1));
+
+    const heartShape = new THREE.Shape(); //Bezier 곡선을 추가합니다
+    heartShape.moveTo(25, 25);
+    heartShape.bezierCurveTo(25, 25, 20, 0, 0, 0);
+    heartShape.bezierCurveTo(-30, 0, -30, 35, -30, 35);
+    heartShape.bezierCurveTo(-30, 55, -10, 77, 25, 95);
+    heartShape.bezierCurveTo(60, 77, 80, 55, 80, 35);
+    heartShape.bezierCurveTo(80, 35, 80, 0, 50, 0);
+    heartShape.bezierCurveTo(35, 0, 25, 25, 25, 25);
+
+    const extrudeSettings = {
+      steps: 2,
+      depth: 16,
+      bevelEnabled: true,
+      bevelThickness: 1,
+      bevelSize: 1,
+      bevelSegments: 5
+    };
+    //ExtrudeGeometry에 사용될 설정을 정의합니다. steps는 extrusion 단계 수, depth는 extrusion의 깊이, bevelEnabled는 bevel(테두리 부드럽게 처리) 사용 여부, 
+   // bevelThickness, bevelSize, bevelSegments는 bevel의 두께, 크기, 세그먼트 수를 지정합니다.
+
+    const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+    const material = new THREE.ShaderMaterial({
+      vertexShader: document.getElementById('vertexShader').textContent,
+      fragmentShader: document.getElementById('fragmentShader').textContent
+    });
+
+    const heart = new THREE.Mesh(geometry, material);
+    scene.add(heart);
+
+    camera.position.z = 200;
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      heart.rotation.x += 0.005;
+      heart.rotation.y += 0.005;
+      //const axis = new THREE.Vector3(0, 1, 0); // y축을 기준으로 회전
+      //const angle = 0.005;
+
+      //heart.rotateOnAxis(axis, angle);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+
+  <script id="vertexShader" type="x-shader/x-vertex">
+    varying vec3 vNormal;
+
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vNormal = normalize(normalMatrix * normal);
+    }
+  </script>
+
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    varying vec3 vNormal;
+
+    void main() {
+      vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+      float diff = max(dot(vNormal, lightDir), 0.0);
+      vec3 diffuse = diff * vec3(1.0, 0.0, 0.0);
+      gl_FragColor = vec4(diffuse, 1.0);
+    }
+  </script>
+</body>
+</html>

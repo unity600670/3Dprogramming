@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+		
+		<script type="module">
+			import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+			const renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			renderer.setClearColor(new THREE.Color(1, 1, 0));
+
+			//const geometry = new THREE.CylinderGeometry( 1, 1, 1, 6 ); 
+            const geometry = new THREE.SphereGeometry(1, 8, 8);
+			//const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+			//const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			var vShader = document.getElementById( 'vertexShader' ).innerHTML;
+			var fShader = document.getElementById( 'fragmentShader' ).innerHTML;
+			var material = new THREE.ShaderMaterial({
+				vertexShader : vShader,
+				fragmentShader : fShader
+			});
+			const object = new THREE.Mesh( geometry, material );
+			scene.add( object );
+
+			camera.position.z = 5;
+
+			function animate() {
+				requestAnimationFrame( animate );
+
+				object.rotation.x += 0.01;
+				object.rotation.z += 0.01;
+
+				renderer.render( scene, camera );
+			}
+
+			animate();
+		</script>
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+		varying vec3 vColor;
+		void main() {
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1);
+			float diff = dot(normalize(normalMatrix *normal),normalize(vec3(1,1,1)));
+			vColor = vec3(1.0,1.0,1.0) * diff;
+			
+			//이 버텍스 셰이더에서는 vColor라는 varying 변수를 정의하고, 이를 조명에 따라 계산된 색상으로 설정합니다.
+			//빛의 방향과 버텍스의 법선 벡터 간의 내적을 사용하여 디퓨즈(확산) 조명을 계산하고, 그 결과를 vColor에 저장합니다.
+		}
+		</script> 
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+		varying vec3 vColor;
+		void main() {    
+			gl_FragColor = vec4(vColor,1.0f);		
+		}
+		</script> 
+	</body>
+</html>
